@@ -59,7 +59,17 @@ Password: ChangeMe-Now!123
 | `npm run dev` | تشغيل مع إعادة تحميل تلقائية |
 | `npm run seed` | إنشاء المخطط + محتوى تجريبي (وجهات، باقات، تقييمات، أسئلة، حجوزات تجريبية) |
 | `npm run reset-db` | تفريغ جميع الجداول (يتطلب `--force` داخلياً) |
+| `npm run admin:password` | تعيين كلمة مرور المشرف من الطرفية: `npm run admin:password -- "New-Pass-123!"` (أو من `ADMIN_PASSWORD`)، مع `--email` لحساب آخر |
 | `npm test` | اختبارات jsdom + أمان ضد خادم معزول بقاعدة مؤقتة |
+
+## 🆘 لا يتم الدخول إلى لوحة التحكم؟ / Troubleshooting sign-in
+
+| الحالة | السبب | الحل |
+|---|---|---|
+| تظهر رسالة «Incorrect email or password» | كلمة المرور مختلفة عن الموجودة في `.env` (مثلاً بُدّلت من داخل اللوحة) | في التطوير يعرض الخادم تلميحاً بكلمة المرور الأولى؛ أعد التعيين بـ `npm run admin:password` |
+| بعد الدخول تظهر نافذة «Change password» | أول دخول يتطلب تعيين كلمة مرور جديدة (سلوك مقصود) — الجلسة ناجحة واللوحة ظاهرة خلفها | أدخل كلمة المرور الحالية + كلمة جديدة قوية (12 حرفاً، كبير/صغير، رقم، رمز) |
+| يرجع فوراً إلى شاشة الدخول أو تظهر رسالة رمز الحماية (CSRF) | المتصفح يمنع كوكي اللوحة، غالباً لأن الصفحة مُدمجة داخل iframe في موقع آخر (المعاينات المُستضافة) | التطبيق يضبط `SameSite=None; Secure` تلقائياً عند الخدمة عبر HTTPS، ويعرض زر «Open the console in its own tab» كحل بديل. يمكن فرضه بالإعداد `COOKIE_SAMESITE=none` |
+| شاشة الدخول لا تتفاعل | لم تُحمّل وحدة JavaScript (سياسة CSP أو خطأ سكربت) | يظهر تنبيه أعلى الصفحة بعد ٣ ثوانٍ «The console could not start — reload the page»؛ راجع الـ console |
 
 ## 🔐 الأمان / Security hardening
 
@@ -71,6 +81,7 @@ Password: ChangeMe-Now!123
 - **تحقق صارم:** Zod لكل مدخلات العامة والإدارة (422 بتفاصيل حقول)، وreject للمفاتيح غير المعروفة.
 - **حد المعدل والإبطاء:** لكل مسار عام ولوحة التحكم ومحاولات الدخول (مع قفل مؤقت للحساب).
 - **جلسات الإدارة:** كوكي HttpOnly/SameSite=Lax، جلسة واحدة نشطة لكل مشرف، إبطال الجلسات عند تغيير كلمة المرور، `must_change_pw` عند الإنشاء.
+- **كوكي متكيّف:** عند وصول الطلب عبر HTTPS خارج الإنتاج (معاينات مُستضافة) تصبح الكوكيز `SameSite=None; Secure` لتعمل اللوحة داخل iframe مع الحفاظ على `Lax` كافتراضي صارم؛ ولا يُرسل `None` أبداً بدون `Secure` (تُرفض من المتصفح).
 - **كلمات المرور:** bcrypt مع cost مرتفع؛ رسائل دخول موحّدة لا تكشف وجود الحساب.
 - **التدقيق:** سجل audit لكل عملية حساسة (دخول/تعديل/تصدير) مع بصمة IP مجزأة.
 - **تصدير CSV:** تهريب خلايا يمنع حقن الصيغ (leading `= + - @`) + BOM لدعم العربية في Excel.
@@ -89,7 +100,7 @@ server/            الخادم
   routes/          content (عام)، leads (نماذج)، admin (محمي)
   schemas/         zod schemas لكل المدخلات
   services/        auth sessions، mailer، audit
-  db/              schema.sql، seed.js، reset.js
+  db/              schema.sql، seed.js، reset.js، admin-password.js
 public/            الواجهة
   *.html           11 صفحة عامة
   css/styles.css   نظام التصميم الكامل
@@ -104,7 +115,8 @@ tests/             اختبارات node --test (خادم معزول + jsdom)
 
 انظر `.env.example` للمشروح كاملاً: `PORT`, `BASE_URL`, `SESSION_SECRET`,
 `CSRF_SECRET`, `DATABASE_FILE`, `ADMIN_*`, `SMTP_*`, `ALLOW_GOOGLE_FONTS`,
-`TRUST_PROXY`… في الإنتاج يفرض `assertValidConfig()` أسراراً قوية و`NODE_ENV=production`.
+`TRUST_PROXY`, `COOKIE_SAMESITE` (auto/lax/strict/none), `COOKIE_SECURE`…
+في الإنتاج يفرض `assertValidConfig()` أسراراً قوية و`NODE_ENV=production`.
 
 ## 🧪 الاختبارات / Tests
 
@@ -116,6 +128,8 @@ tests/             اختبارات node --test (خادم معزول + jsdom)
 - تبديل اللغة العربية/الإنجليزية واتجاه الصفحة.
 - لوحة التحكم: الدخول، إجبار تغيير الكلمة، الإدارة التحرير.
 - regression أمنية: الرؤوس، CSRF، Origin، التحقق، 401/403/404/422.
+- كوكيز الجلسة: `Lax` على HTTP المباشر و`None; Secure` خلف HTTPS، ورسائل واضحة عندما
+  يرفض المتصفح حفظ الكوكي (راجع `tests/session.test.mjs`).
 
 ## 📄 الترخيص / License
 

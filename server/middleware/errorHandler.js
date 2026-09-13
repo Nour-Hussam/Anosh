@@ -64,6 +64,7 @@ export function errorHandler(err, req, res, _next) {
     },
   };
   if (error.details) body.error.details = error.details;
+  if (error.hint) body.error.hint = error.hint;
   if (!config.isProduction && error.status >= 500) body.error.stack = err.stack;
 
   return res.status(error.status || 500).json(body);

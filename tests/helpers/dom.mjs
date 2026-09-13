@@ -16,7 +16,7 @@ function setGlobal(key, value) {
   }
 }
 
-export function loadPage(page, origin, pageUrl = '/') {
+export function loadPage(page, origin, pageUrl = '/', { dropCookies = [] } = {}) {
   const virtualConsole = new VirtualConsole();
   const consoleErrors = [];
   virtualConsole.on('jsdomError', (err) => consoleErrors.push(`jsdomError: ${err.message}`));
@@ -53,6 +53,9 @@ export function loadPage(page, origin, pageUrl = '/') {
     const res = await REAL_FETCH(url, { ...init, headers });
     for (const raw of res.headers.getSetCookie?.() || []) {
       const [pair] = raw.split(';');
+      // `dropCookies` models a browser that refuses to store a cookie (blocked
+      // third-party cookies, embedded frames, private mode…).
+      if (dropCookies.some((pattern) => pattern.test(pair))) continue;
       const idx = pair.indexOf('=');
       if (idx > 0) jar.set(pair.slice(0, idx).trim(), pair.slice(idx + 1).trim());
     }

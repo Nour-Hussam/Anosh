@@ -100,7 +100,14 @@ router.post(
     // Generic message: never reveal whether the account exists.
     const invalid = () => {
       audit(req, { action: 'login.failed', entity: 'user', entityId: user?.id ?? '', meta: { email }, success: 0 });
-      throw ApiError.unauthorized('invalid_credentials', 'Incorrect email or password.');
+      const error = ApiError.unauthorized('invalid_credentials', 'Incorrect email or password.');
+      // Development-only nudge: never hints at credentials on a production install.
+      if (!config.isProduction) {
+        error.hint =
+          `The first-run password is ADMIN_PASSWORD from your .env file (default “ChangeMe-Now!123”, ` +
+          `email ${config.security.adminBootstrap.email}). Locked out? Run: npm run admin:password`;
+      }
+      throw error;
     };
 
     if (!user) invalid();

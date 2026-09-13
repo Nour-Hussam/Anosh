@@ -40,6 +40,11 @@ function csrfErrorHandler(err, req, res, next) {
         code: 'csrf_failed',
         message: 'Security token invalid or expired. Please refresh the page and try again.',
         message_ar: 'رمز الحماية غير صالح أو منتهي. حدّث الصفحة ثم حاول مرة أخرى.',
+        // The most common cause is not an expired token but a browser that drops
+        // the security cookie — typically a cross-site <iframe> (hosted previews).
+        hint:
+          'If refreshing does not help, your browser is probably blocking this site’s cookies — ' +
+          'this happens when the dashboard is opened inside another page. Open it in its own tab and try again.',
       },
     });
   }
