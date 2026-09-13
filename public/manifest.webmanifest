@@ -1,0 +1,23 @@
+{
+  "name": "Kingdom Journeys — رحلات المملكة",
+  "short_name": "Kingdom Journeys",
+  "description": "Saudi tourism company designing guided journeys across the Kingdom.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf7f1",
+  "theme_color": "#0a5c42",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/images/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/images/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "categories": ["travel", "navigation", "business"],
+  "shortcuts": [
+    { "name": "الرحلات والباقات", "url": "/packages" },
+    { "name": "احجز رحلتك", "url": "/booking" },
+    { "name": "اتصل بنا", "url": "/contact" }
+  ]
+}

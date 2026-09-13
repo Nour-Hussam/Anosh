@@ -1,0 +1,30 @@
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- Runtime data (database, uploads, logs) ---
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+logs/
+tmp/
+
+# --- Environment / secrets ---
+.env
+.env.local
+.env.*.local
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# --- Test / coverage ---
+coverage/
+.nyc_output/
