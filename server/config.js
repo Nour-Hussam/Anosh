@@ -62,6 +62,15 @@ function readBoolean(name, fallback = false) {
   throw new Error(`[config] ${name} must be a boolean (true/false).`);
 }
 
+function readEnum(name, fallback, allowed) {
+  const raw = (env[name] || '').trim().toLowerCase();
+  if (!raw) return fallback;
+  if (!allowed.includes(raw)) {
+    throw new Error(`[config] ${name} must be one of: ${allowed.join(', ')}.`);
+  }
+  return raw;
+}
+
 const trustProxy = env.TRUST_PROXY
   ? readBoolean('TRUST_PROXY') || Number.parseInt(env.TRUST_PROXY, 10) || 0
   : 0;
@@ -93,6 +102,9 @@ export const config = {
     loginMaxAttempts: readNumber('LOGIN_MAX_ATTEMPTS', 5, { min: 2, max: 100 }),
     loginLockMinutes: readNumber('LOGIN_LOCK_MINUTES', 15, { min: 1, max: 1440 }),
     cookieSecure: readBoolean('COOKIE_SECURE', isProduction),
+    // auto = 'lax' normally, 'none' for HTTPS requests outside production (hosted
+    // previews embed the app in a frame, where browsers drop Lax cookies).
+    cookieSameSite: readEnum('COOKIE_SAMESITE', 'auto', ['auto', 'lax', 'strict', 'none']),
     adminBootstrap: {
       name: (env.ADMIN_NAME || 'Site Administrator').trim().slice(0, 80),
       email: (env.ADMIN_EMAIL || 'admin@kingdom-journeys.local').trim().toLowerCase().slice(0, 160),

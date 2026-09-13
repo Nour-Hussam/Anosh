@@ -5,12 +5,13 @@
 const BASE = '/api';
 
 export class ApiClientError extends Error {
-  constructor(status, code, message, details) {
+  constructor(status, code, message, details, hint) {
     super(message || 'Request failed');
     this.name = 'ApiClientError';
     this.status = status;
     this.code = code;
     this.details = details;
+    this.hint = hint;
   }
 
   get isNetwork() {
@@ -104,7 +105,7 @@ async function request(method, path, { body, query, retryOnCsrf = true } = {}) {
 
   if (!res.ok) {
     const err = data?.error || {};
-    throw new ApiClientError(res.status, err.code || 'error', err.message || res.statusText, err.details);
+    throw new ApiClientError(res.status, err.code || 'error', err.message || res.statusText, err.details, err.hint);
   }
 
   return data;

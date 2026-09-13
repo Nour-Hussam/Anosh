@@ -13,6 +13,11 @@
       <div class="admin-noscript">JavaScript is required to use the admin dashboard.</div>
     </noscript>
 
+    <div id="boot-warning" class="admin-noscript" hidden>
+      The console could not start — reload the page. If it keeps failing, check the browser console for
+      the script error (for example a blocked cookie or a Content-Security-Policy message).
+    </div>
+
     <!-- ============================ login ============================ -->
     <section id="login-view" class="admin-login" hidden>
       <form id="login-form" class="admin-login__card" novalidate>
@@ -97,6 +102,27 @@
     </div>
 
     <div id="admin-toast" class="admin-toast" role="status" aria-live="polite" hidden></div>
+
+    <!-- Tiny inline guard (allow-listed by CSP hash): the console is a JS app, so a
+         script that fails to load must say so instead of leaving the login form to
+         post natively — which just reloads the page and looks like "nothing happened". -->
+    <script>
+      (function () {
+        // Until the console module reports for duty, keep the form from posting
+        // natively (that would reload the page and put the password in the URL).
+        document.getElementById('login-form').addEventListener(
+          'submit',
+          function (event) {
+            if (!window.__adminReady) event.preventDefault();
+          },
+          true
+        );
+        window.setTimeout(function () {
+          if (window.__adminReady) return;
+          document.getElementById('boot-warning').hidden = false;
+        }, 3000);
+      })();
+    </script>
 
     <script type="module" src="/admin/js/admin.js"></script>
   </body>

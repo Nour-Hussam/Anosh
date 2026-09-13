@@ -7,16 +7,19 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 
-export async function startTestServer() {
+let instances = 0;
+
+export async function startTestServer(envOverrides = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), 'kj-test-'));
   const dbFile = path.join(dir, 'test.db');
-  const port = 3200 + (process.pid % 300);
+  // Each instance gets its own port so a test can run more than one configuration.
+  const port = Number(envOverrides.PORT) || 3200 + (process.pid % 300) + instances * 13;
+  instances += 1;
   const origin = `http://localhost:${port}`;
 
   const env = {
     ...process.env,
     NODE_ENV: 'test',
-    PORT: String(port),
     HOST: '127.0.0.1',
     BASE_URL: origin,
     DATABASE_FILE: dbFile,
@@ -26,6 +29,8 @@ export async function startTestServer() {
     ALLOW_GOOGLE_FONTS: 'false',
     SMTP_HOST: '',
     LOG_LEVEL: 'error',
+    ...envOverrides,
+    PORT: String(port), // overrides must not move the server away from `origin`
   };
 
   // Schema + demo content first…

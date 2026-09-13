@@ -13,6 +13,7 @@
     "dev": "node --watch server/index.js",
     "seed": "node server/db/seed.js",
     "reset-db": "node server/db/reset.js --force",
+    "admin:password": "node server/db/admin-password.js",
     "test": "node --test \"tests/**/*.test.mjs\""
   },
   "dependencies": {

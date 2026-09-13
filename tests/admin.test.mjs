@@ -73,3 +73,64 @@ test('admin SPA end-to-end', async () => {
 
   assert.deepEqual(consoleErrors, [], 'no console errors in admin SPA');
 });
+
+/* A browser that refuses to keep the session cookie (blocked third-party cookies,
+   cross-site frame, private mode…) used to bounce silently back to the sign-in card.
+   The console must say what happened and how to get in. */
+test('the console explains a session cookie the browser refused to keep', async () => {
+  const { window, document } = loadPage('admin/index.html', server.origin, '/admin/', {
+    dropCookies: [/^cj-session=/],
+  });
+  await loadModule('admin/js/admin.js');
+  await sleep(700);
+
+  document.querySelector('#login-form [name="email"]').value = server.admin.email;
+  document.querySelector('#login-form [name="password"]').value = server.admin.password;
+  document.getElementById('login-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  await sleep(1800);
+
+  assert.equal(document.getElementById('app-view').hidden, true, 'no half-signed-in console');
+  const alert = document.getElementById('login-alerts').textContent;
+  assert.match(alert, /could not stay signed in/i, `explains the missing cookie: ${alert}`);
+  assert.match(alert, /did not keep the session cookie/i, alert);
+  assert.match(alert, /cookies for this site/i, `tells the user what to do: ${alert}`);
+});
+
+/* Embedded in another page (hosted preview / portal) the browser may reject the
+   security cookie outright: the sign-in never reaches the server. Say so. */
+test('the console reports a sign-in that never reached the server', async () => {
+  const { window, document } = loadPage('admin/index.html', server.origin, '/admin/');
+  await loadModule('admin/js/admin.js');
+  await sleep(700);
+
+  const json = (body, status) => ({
+    ok: status < 300,
+    status,
+    statusText: '',
+    headers: { getSetCookie: () => [] },
+    text: async () => JSON.stringify(body),
+    json: async () => body,
+  });
+  const reject = async (input) => {
+    const url = String(typeof input === 'string' ? input : input.url);
+    if (url.includes('/api/csrf-token')) return json({ csrfToken: 'token-from-a-dropped-cookie' }, 200);
+    return json(
+      { error: { code: 'csrf_failed', message: 'Security token invalid or expired. Please refresh the page and try again.' } },
+      403
+    );
+  };
+  window.fetch = reject;
+  globalThis.fetch = reject;
+
+  document.querySelector('#login-form [name="email"]').value = server.admin.email;
+  document.querySelector('#login-form [name="password"]').value = server.admin.password;
+  document.getElementById('login-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  await sleep(900);
+
+  assert.equal(document.getElementById('app-view').hidden, true);
+  const alert = document.getElementById('login-alerts').textContent;
+  assert.match(alert, /stopped before it reached the server/i, alert);
+  assert.match(alert, /cookies/i, `explains what the browser blocked: ${alert}`);
+  // Inside a real frame the console additionally offers "Open the console in its own
+  // tab" (verified in a browser against a cross-site iframe).
+});

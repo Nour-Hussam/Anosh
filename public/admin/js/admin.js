@@ -50,9 +50,16 @@ function toast(message, type = 'success') {
   toast.timer = setTimeout(() => { el.hidden = true; }, 3600);
 }
 
-function setAlerts(host, type, message) {
+function setAlerts(host, type, message, { hint = '', action = null } = {}) {
   if (!host) return;
-  host.innerHTML = message ? `<div class="admin-alert admin-alert--${type}">${esc(message)}</div>` : '';
+  host.innerHTML = message
+    ? `<div class="admin-alert admin-alert--${type}">
+         <p class="admin-alert__text">${esc(message)}</p>
+         ${hint ? `<p class="admin-alert__hint">${esc(hint)}</p>` : ''}
+         ${action ? `<button type="button" class="btn btn--ghost btn--small" data-alert-action>${esc(action.label)}</button>` : ''}
+       </div>`
+    : '';
+  if (action) $('[data-alert-action]', host)?.addEventListener('click', action.onClick);
 }
 
 function errorText(err) {
@@ -64,6 +71,37 @@ function errorText(err) {
   if (err.status === 401) return 'Your session expired — please sign in again.';
   if (err.status === 403) return 'You do not have permission to do that.';
   return 'Something went wrong.';
+}
+
+const errorHint = (err) => (typeof err?.hint === 'string' ? err.hint : '');
+
+/** True when the console is rendered inside another page (hosted previews, portals). */
+function isFramed() {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true; // cross-origin parent → definitely framed
+  }
+}
+
+/**
+ * Guidance for the failure mode where the browser never hands the page its
+ * security cookies (cross-site <iframe>, blocked/third-party cookies). Without
+ * this the console silently bounces back to the sign-in card.
+ */
+function cookieNotice(intro) {
+  const framed = isFramed();
+  return {
+    message: framed
+      ? `${intro} This page is embedded in another page, where your browser blocks the cookies the console needs.`
+      : `${intro} Your browser did not keep the session cookie, so the console cannot stay signed in.`,
+    hint: framed
+      ? 'Open the console in its own browser tab and sign in there.'
+      : 'Allow cookies for this site (and leave private/incognito mode), then try again.',
+    action: framed
+      ? { label: 'Open the console in its own tab ↗', onClick: () => window.open(location.href, '_blank', 'noopener') }
+      : null,
+  };
 }
 
 /** Reads a form into a flat object; `x__ar`/`x__en` become {ar,en} and
@@ -178,10 +216,14 @@ async function refreshSession() {
   }
 }
 
-function showLogin() {
+function showLogin(notice = null) {
   $('#app-view').hidden = true;
   $('#login-view').hidden = false;
   $('#login-form').reset();
+  setAlerts($('#login-alerts'), notice?.type || 'info', notice?.message || '', {
+    hint: notice?.hint,
+    action: notice?.action,
+  });
 }
 
 function showApp() {
@@ -206,6 +248,10 @@ function openPasswordModal(forced = false) {
   $('#pw-modal').hidden = false;
   $('#pw-reason').hidden = !forced;
   $('#pw-cancel').hidden = forced;
+  if (forced && state.user) {
+    // Make it obvious that the sign-in itself worked and this is the last step.
+    $('#pw-reason').textContent = `You are signed in as ${state.user.email} — choose a new password to start using the console.`;
+  }
   $('#pw-form').reset();
   setAlerts($('#pw-alerts'), 'info', '');
 }
@@ -225,11 +271,28 @@ async function initAuth() {
       });
       state.user = data.user;
       state.forcedPasswordChange = Boolean(data.user.mustChangePassword);
+
+      // The sign-in succeeded, but a browser that dropped the session cookie would
+      // show the console and immediately bounce back to this card. Confirm the
+      // session is really there and explain what happened if it is not.
+      const verified = await refreshSession();
+      if (!verified) {
+        state.user = null;
+        showLogin({ type: 'error', ...cookieNotice('You signed in, but the console could not stay signed in.') });
+        return;
+      }
+
       showApp();
       toast(`Welcome back, ${data.user.name}`);
       if (state.forcedPasswordChange) openPasswordModal(true);
     } catch (err) {
-      setAlerts($('#login-alerts'), 'error', errorText(err));
+      // A rejected security token almost always means the browser never sent the
+      // cookie back — the classic symptom of the console opened inside a frame.
+      const notice = err?.code === 'csrf_failed' ? cookieNotice('Sign-in was stopped before it reached the server.') : null;
+      setAlerts($('#login-alerts'), 'error', notice ? `${notice.message} ${errorText(err)}` : errorText(err), {
+        hint: notice ? notice.hint : errorHint(err),
+        action: notice?.action,
+      });
     } finally {
       button.disabled = false;
     }
@@ -296,7 +359,7 @@ function navigate(view) {
   const root = $('#view-root');
   root.innerHTML = '<div class="admin-empty">Loading…</div>';
   RENDERERS[view](root).catch((err) => {
-    if (err?.status === 401) { showLogin(); return; }
+    if (err?.status === 401) { showLogin({ message: 'Your session expired — please sign in again.' }); return; }
     root.innerHTML = `<div class="admin-alert admin-alert--error">${esc(errorText(err))}</div>`;
   });
 }
@@ -1185,3 +1248,5 @@ const RENDERERS = {
 window.addEventListener('hashchange', () => navigate(location.hash.slice(2) || 'dashboard'));
 initAuth();
 boot();
+// Tells the inline guard in index.html that the console really started.
+window.__adminReady = true;

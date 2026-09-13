@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 
 import { config, ROOT_DIR } from './config.js';
+import { cookiePolicy } from './utils/cookies.js';
 import { attachVisitor } from './middleware/visitor.js';
 import { csrfTokenHandler } from './middleware/csrf.js';
 import { apiLimiter } from './middleware/rateLimit.js';
@@ -60,6 +61,9 @@ export function createApp() {
   app.use(extraSecurityHeaders);
   app.use(compression({ level: 6, threshold: 1024 }));
   app.use(cookieParser());
+  // Every cookie written for this request (ours and the libraries') gets the
+  // SameSite/Secure attributes that fit the request — see utils/cookies.js.
+  app.use(cookiePolicy);
   app.use(attachVisitor);
 
   /* ------------------------------ health ------------------------------- */
