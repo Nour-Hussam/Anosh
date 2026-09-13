@@ -144,11 +144,13 @@ export function readSession(req) {
 /** Sliding expiration: pushes the deadline forward (never past the absolute TTL). */
 export function touchSession(sessionId) {
   const db = getDb();
+  // Keep both deadlines in the same UTC format: MIN compares these as text,
+  // and a bare SQLite datetime is parsed as local time by JavaScript.
   db.prepare(
     `UPDATE sessions
         SET last_seen_at = ?,
             expires_at = MIN(strftime('%Y-%m-%dT%H:%M:%fZ','now', '+' || ? || ' minutes'),
-                              datetime(created_at, '+' || ? || ' minutes'))
+                              strftime('%Y-%m-%dT%H:%M:%fZ', created_at, '+' || ? || ' minutes'))
       WHERE id = ?`
   ).run(nowIso(), config.security.sessionIdleMinutes, config.security.sessionTtlMinutes, sessionId);
 }

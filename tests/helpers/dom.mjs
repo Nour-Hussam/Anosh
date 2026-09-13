@@ -3,6 +3,7 @@
    not execute <script type="module">). */
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { JSDOM, VirtualConsole } from 'jsdom';
 
 const PUBLIC = path.resolve(import.meta.dirname, '..', '..', 'public');
@@ -84,7 +85,7 @@ export function loadPage(page, origin, pageUrl = '/', { dropCookies = [] } = {})
 
 /** Imports a frontend module with a cache-buster so each page test gets a fresh instance. */
 export function loadModule(relativePath) {
-  return import(`file://${path.join(PUBLIC, relativePath)}?t=${Date.now()}-${Math.random()}`);
+  return import(`${pathToFileURL(path.join(PUBLIC, relativePath)).href}?t=${Date.now()}-${Math.random()}`);
 }
 
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

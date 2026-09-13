@@ -6,6 +6,7 @@ import { startTestServer } from './helpers/server.mjs';
 import { loadPage, loadModule, sleep } from './helpers/dom.mjs';
 
 const server = await startTestServer();
+let adminPassword = server.admin.password;
 test.after(() => server.stop());
 
 test('admin SPA end-to-end', async () => {
@@ -30,7 +31,18 @@ test('admin SPA end-to-end', async () => {
   await sleep(1600);
   assert.equal(document.getElementById('app-view').hidden, false, 'app shell after login');
   assert.equal(document.getElementById('pw-modal').hidden, false, 'forced password change');
-  document.getElementById('pw-modal').hidden = true;
+  document.querySelector('#pw-form [name="currentPassword"]').value = 'Wrong-Current-Pass-123!';
+  document.querySelector('#pw-form [name="newPassword"]').value = 'Updated-Admin-Pass-456!';
+  document.getElementById('pw-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  await sleep(1000);
+  assert.equal(document.getElementById('pw-modal').hidden, false, 'wrong password keeps the form open');
+  assert.match(document.getElementById('pw-alerts').textContent, /current password is incorrect/i);
+
+  document.querySelector('#pw-form [name="currentPassword"]').value = adminPassword;
+  document.getElementById('pw-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  await sleep(1000);
+  assert.equal(document.getElementById('pw-modal').hidden, true, 'password change succeeds');
+  adminPassword = 'Updated-Admin-Pass-456!';
 
   assert.ok(document.querySelectorAll('#view-root .admin-stat').length >= 6, 'dashboard stats');
 
@@ -72,6 +84,19 @@ test('admin SPA end-to-end', async () => {
   assert.ok(document.querySelectorAll('#view-root table.admin-table tbody tr').length > 0, 'audit log');
 
   assert.deepEqual(consoleErrors, [], 'no console errors in admin SPA');
+
+  document.getElementById('btn-change-password').click();
+  document.cookie = 'cj-session=';
+  document.querySelector('#pw-form [name="currentPassword"]').value = adminPassword;
+  document.querySelector('#pw-form [name="newPassword"]').value = 'Another-Admin-Pass-789!';
+  document.getElementById('pw-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  await sleep(1000);
+  assert.equal(document.getElementById('pw-modal').hidden, true, 'expired session dismisses the modal');
+  assert.equal(document.getElementById('login-view').hidden, false, 'sign-in is accessible again');
+  assert.equal(document.getElementById('app-view').hidden, true);
+  assert.equal(document.querySelector('#pw-form [name="currentPassword"]').value, '');
+  assert.equal(document.querySelector('#pw-form [name="newPassword"]').value, '');
+  assert.match(document.getElementById('login-alerts').textContent, /session expired/i);
 });
 
 /* A browser that refuses to keep the session cookie (blocked third-party cookies,
@@ -85,7 +110,7 @@ test('the console explains a session cookie the browser refused to keep', async 
   await sleep(700);
 
   document.querySelector('#login-form [name="email"]').value = server.admin.email;
-  document.querySelector('#login-form [name="password"]').value = server.admin.password;
+  document.querySelector('#login-form [name="password"]').value = adminPassword;
   document.getElementById('login-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
   await sleep(1800);
 

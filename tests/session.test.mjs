@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { startTestServer } from './helpers/server.mjs';
 
-const server = await startTestServer();
+const server = await startTestServer({ TZ: 'Africa/Cairo' });
 test.after(() => server.stop());
 
 const HTTPS = { 'X-Forwarded-Proto': 'https' };
@@ -152,4 +152,25 @@ test('a failed sign-in stays generic but explains itself in development', async 
   assert.match(error.message, /incorrect email or password/i);
   // The hint is identical for every address, so it never reveals account existence.
   assert.match(error.hint || '', /ADMIN_PASSWORD|admin:password/);
+});
+
+test('first-login password change keeps the session authenticated in Cairo time', async () => {
+  const { res, jar } = await signIn();
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).user.mustChangePassword, true);
+
+  // The UI verifies the session and loads dashboard data before submitting.
+  for (const path of ['/session', '/dashboard', '/session']) {
+    const response = await fetch(`${server.origin}/api/admin${path}`, { headers: { Cookie: jar.header() } });
+    assert.equal(response.status, 200, path);
+  }
+  const changed = await fetch(`${server.origin}/api/admin/change-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': await csrfFor(jar), Cookie: jar.header() },
+    body: JSON.stringify({ currentPassword: server.admin.password, newPassword: 'Updated-Admin-Pass-456!' }),
+  });
+  assert.equal(changed.status, 200);
+  const session = await fetch(`${server.origin}/api/admin/session`, { headers: { Cookie: jar.header() } });
+  assert.equal(session.status, 200);
+  assert.equal((await session.json()).user.mustChangePassword, false);
 });
