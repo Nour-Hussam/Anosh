@@ -217,6 +217,11 @@ async function refreshSession() {
 }
 
 function showLogin(notice = null) {
+  state.user = null;
+  state.forcedPasswordChange = false;
+  $('#pw-modal').hidden = true;
+  $('#pw-form').reset();
+  closeDrawer();
   $('#app-view').hidden = true;
   $('#login-view').hidden = false;
   $('#login-form').reset();
@@ -321,6 +326,10 @@ async function initAuth() {
       state.forcedPasswordChange = false;
       toast('Password updated — other devices were signed out.');
     } catch (err) {
+      if (err?.status === 401) {
+        showLogin({ type: 'error', message: 'Your session expired — please sign in again.' });
+        return;
+      }
       setAlerts($('#pw-alerts'), 'error', errorText(err));
     } finally {
       button.disabled = false;
