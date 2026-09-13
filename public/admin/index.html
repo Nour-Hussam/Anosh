@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Admin — Kingdom Journeys</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/admin/css/admin.css" />
+  </head>
+  <body class="admin-body">
+    <noscript>
+      <div class="admin-noscript">JavaScript is required to use the admin dashboard.</div>
+    </noscript>
+
+    <!-- ============================ login ============================ -->
+    <section id="login-view" class="admin-login" hidden>
+      <form id="login-form" class="admin-login__card" novalidate>
+        <div class="admin-login__brand">
+          <img src="/favicon.svg" alt="" width="44" height="44" />
+          <div>
+            <strong>Kingdom Journeys</strong>
+            <span>Admin console</span>
+          </div>
+        </div>
+        <h1>Sign in</h1>
+        <div id="login-alerts" class="admin-alerts"></div>
+        <label class="admin-field">
+          <span>Email</span>
+          <input name="email" type="email" autocomplete="username" required />
+        </label>
+        <label class="admin-field">
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <label class="admin-check">
+          <input name="remember" type="checkbox" />
+          <span>Keep me signed in on this device</span>
+        </label>
+        <button class="btn btn--primary admin-btn-full" type="submit">Sign in</button>
+        <p class="admin-login__hint">
+          Sessions are protected with CSRF tokens, rate limiting and lock-out after repeated
+          failures. All actions are recorded in the audit log.
+        </p>
+      </form>
+    </section>
+
+    <!-- ============================= app ============================= -->
+    <div id="app-view" class="admin-app" hidden>
+      <aside class="admin-side">
+        <div class="admin-side__brand">
+          <img src="/favicon.svg" alt="" width="34" height="34" />
+          <div>
+            <strong>Kingdom Journeys</strong>
+            <span id="side-role">admin</span>
+          </div>
+        </div>
+        <nav id="admin-nav" class="admin-nav" aria-label="Admin sections"></nav>
+        <div class="admin-side__foot">
+          <a class="admin-sidelink" href="/" target="_blank" rel="noopener">View website ↗</a>
+          <button id="btn-change-password" class="admin-sidelink" type="button">Change password</button>
+          <button id="btn-logout" class="admin-sidelink admin-sidelink--danger" type="button">Sign out</button>
+        </div>
+      </aside>
+
+      <div class="admin-main">
+        <header class="admin-top">
+          <h2 id="view-title">Dashboard</h2>
+          <div class="admin-top__meta">
+            <span id="whoami"></span>
+          </div>
+        </header>
+        <main id="view-root" class="admin-content"></main>
+      </div>
+    </div>
+
+    <!-- ==================== change-password modal ==================== -->
+    <div id="pw-modal" class="admin-modal" hidden>
+      <form id="pw-form" class="admin-modal__card" novalidate>
+        <h3>Change password</h3>
+        <p id="pw-reason" class="admin-modal__note" hidden>
+          For your safety you must choose a new password before using the console.
+        </p>
+        <div id="pw-alerts" class="admin-alerts"></div>
+        <label class="admin-field"><span>Current password</span><input name="currentPassword" type="password" autocomplete="current-password" required /></label>
+        <label class="admin-field"><span>New password</span><input name="newPassword" type="password" autocomplete="new-password" required /></label>
+        <ul class="admin-modal__rules">
+          <li>At least 12 characters</li>
+          <li>Upper-case and lower-case letters</li>
+          <li>A number and a symbol</li>
+        </ul>
+        <div class="admin-modal__actions">
+          <button type="button" id="pw-cancel" class="btn btn--ghost">Cancel</button>
+          <button type="submit" class="btn btn--primary">Update password</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="admin-toast" class="admin-toast" role="status" aria-live="polite" hidden></div>
+
+    <script type="module" src="/admin/js/admin.js"></script>
+  </body>
+</html>
